@@ -2,12 +2,13 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
+from typing import Any
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-change-me")
+SECRET_KEY:str = os.environ.get("SECRET_KEY", "django-insecure-change-me")
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
@@ -67,11 +68,11 @@ WSGI_APPLICATION = "core.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_DB", "tses_db"),
-        "USER": os.environ.get("POSTGRES_USER", "tses_user"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "tses_pass"),
-        "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
-        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "NAME": os.environ.get("POSTGRES_DB"),
+        "USER": os.environ.get("POSTGRES_USER"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
+        "HOST": os.environ.get("POSTGRES_HOST"),
+        "PORT": os.environ.get("POSTGRES_PORT"),
     }
 }
 
@@ -109,8 +110,8 @@ SIMPLE_JWT = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "TSES OTP Authentication API",
-    "DESCRIPTION": "Email-based OTP authentication with Redis rate limiting, Celery async tasks, and JWT tokens.",
+    "TITLE": "TSES Assessment API",
+    "DESCRIPTION": "TSES Assessment API that handles email-based OTP authentication with Redis rate limiting, Celery async tasks, and JWT tokens.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
@@ -163,7 +164,6 @@ LOGGING = {
     },
 }
 
-# OTP settings
 OTP_TTL_SECONDS = int(os.environ.get("OTP_TTL_SECONDS", "300"))  # 5 min
 OTP_MAX_REQUESTS_PER_EMAIL = int(os.environ.get("OTP_MAX_REQUESTS_PER_EMAIL", "3"))
 OTP_EMAIL_WINDOW_SECONDS = int(os.environ.get("OTP_EMAIL_WINDOW_SECONDS", "600"))  # 10 min

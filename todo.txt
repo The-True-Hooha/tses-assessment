@@ -1,0 +1,196 @@
+TSES ASSESSMENT - IMPLEMENTATION TODO
+======================================
+Current state: Django scaffold only. settings/base.py exists but nothing else is wired up.
+Everything below needs to be created from scratch.
+
+--------------------------------------
+PHASE 1 — SETTINGS & CONFIGURATION
+--------------------------------------
+[x] Create core/settings/__init__.py (empty)
+[x] Create core/settings/dev.py (imports base, sets DEBUG=True)
+[x] Create core/settings/prod.py (imports base, sets secure headers)
+[x] Delete old core/settings.py (replaced by the package above)
+[x] Update manage.py to use DJANGO_SETTINGS_MODULE=core.settings.dev
+[x] Update core/wsgi.py to use core.settings.prod
+[x] Update core/asgi.py to use core.settings.prod
+[x] Create .env file (local dev values, never committed)
+[x] Create .env.example file (placeholder values, committed)
+
+--------------------------------------
+PHASE 2 — CORE INFRASTRUCTURE
+--------------------------------------
+[ ] Create core/celery.py (Celery app, autodiscover_tasks)
+[ ] Update core/__init__.py to import celery app (makes it load with Django)
+[ ] Create core/logging_formatters.py
+      - JSONFormatter class (structured JSON logs)
+      - Thread-local request context store (request_id, correlation_id, user_id, ip, endpoint)
+      - get/set/clear_request_context() helpers
+[ ] Create core/middleware.py
+      - get_client_ip() helper (handles X-Forwarded-For)
+      - RequestIDMiddleware: generate request_id, accept X-Request-ID header, propagate to response
+      - RequestLoggingMiddleware: log request start/end, latency, set thread-local context
+[ ] Create core/exceptions.py
+      - custom_exception_handler() for DRF
+      - Returns consistent { "error": { "code", "message", "status_code" } } shape
+      - Maps ValidationError→400, AuthError→401, RateLimitError→429, LockoutError→423
+      - Never leaks stack traces; logs full error internally
+[ ] Create core/redis_client.py
+      - Connection pool (max_connections=20)
+      - get_redis() helper used everywhere
+[ ] Create core/health_views.py
+      - health_check() → GET /health/ → 200 { status: ok }
+      - readiness_check() → GET /ready/ → checks DB + Redis, 200 or 503
+[ ] Create core/health_urls.py (routes /health/ and /ready/)
+[ ] Update core/urls.py
+      - Include accounts.urls at api/v1/auth/
+      - Include audit.urls at api/v1/audit/
+      - Add drf-spectacular schema + Swagger UI + ReDoc routes
+      - Include health_urls
+
+--------------------------------------
+PHASE 3 — ACCOUNTS APP
+--------------------------------------
+[ ] accounts/models.py — use Django built-in User (no custom model needed)
+[ ] Create accounts/services.py
+      - generate_otp() — cryptographically secure 6-digit string
+      - hash_otp(otp) — SHA-256 hash before storing
+      - store_otp(email, otp) — store hashed OTP in Redis with OTP_TTL_SECONDS TTL
+      - verify_otp(email, otp) — constant-time comparison, delete key on success (one-time use)
+      - check_email_rate_limit(email) — sliding window via Redis sorted set, returns (allowed, retry_after)
+      - check_ip_rate_limit(ip) — sliding window, returns (allowed, retry_after)
+      - check_global_ip_rate_limit(ip) — fixed window 100 req/min, returns (allowed, retry_after)
+      - is_locked_out(email) — check lockout key TTL, returns (locked, unlock_eta)
+      - record_failed_attempt(email) — INCR+EXPIRE atomic, triggers lockout at max, returns (locked, eta)
+      - clear_failed_attempts(email) — delete fail + lockout keys on success
+      - get_or_create_user(email) — get or create Django User by email
+[ ] Create accounts/serializers.py
+      - OTPRequestSerializer (email field)
+      - OTPVerifySerializer (email + otp fields)
+      - TokenResponseSerializer (access, refresh, token_type)
+      - OTPRequestResponseSerializer (message, expires_in)
+      - ErrorResponseSerializer (error.code, error.message, error.status_code, error.retry_after)
+[ ] Create accounts/tasks.py
+      - send_otp_email(email, otp, correlation_id) — print to console, retry 3x with backoff
+      - write_audit_log(event, email, ip, meta, correlation_id) — insert AuditLog row, retry 5x with exponential backoff
+[ ] Create accounts/views.py
+      - OTPRequestView (POST /api/v1/auth/otp/request)
+          * AllowAny permission
+          * Validate with OTPRequestSerializer
+          * Check global IP rate limit → 429 if exceeded
+          * Check email rate limit → 429 if exceeded (with Retry-After header)
+          * Check IP OTP rate limit → 429 if exceeded
+          * Fail closed (503) if Redis is unavailable
+          * Generate OTP, store in Redis
+          * Enqueue send_otp_email.delay() — non-blocking
+          * Enqueue write_audit_log.delay(OTP_REQUESTED) — non-blocking
+          * Return 202 with expires_in
+          * Full drf-spectacular @extend_schema with examples
+      - OTPVerifyView (POST /api/v1/auth/otp/verify)
+          * AllowAny permission
+          * Validate with OTPVerifySerializer
+          * Check lockout → 423 with unlock ETA + Retry-After header
+          * Fail closed (503) if Redis unavailable
+          * Verify OTP (constant-time)
+          * On failure: record_failed_attempt, enqueue OTP_FAILED audit log
+            - If now locked: return 423
+            - Else: return 400 InvalidOTP
+          * On success: clear_failed_attempts, get_or_create_user, issue JWT via SimpleJWT
+          * Enqueue OTP_VERIFIED audit log
+          * Return 200 with access + refresh tokens
+          * Full drf-spectacular @extend_schema with examples
+[ ] Create accounts/urls.py
+      - POST otp/request → OTPRequestView
+      - POST otp/verify → OTPVerifyView
+[ ] Update accounts/apps.py (AppConfig name = "accounts")
+
+--------------------------------------
+PHASE 4 — AUDIT APP
+--------------------------------------
+[ ] Create audit/models.py
+      - AuditLog model: id, event (choices), email, ip_address, user_agent, metadata (JSONField), created_at
+      - db_index=True on: email, event, created_at
+      - Composite index on (email, event)
+      - Default ordering: -created_at
+[ ] Create audit/serializers.py
+      - AuditLogSerializer (all fields, read-only)
+[ ] Create audit/views.py
+      - AuditLogListView (GET /api/v1/audit/logs)
+          * IsAuthenticated permission (JWT)
+          * Paginated (default newest first)
+          * Max page size enforced
+          * Manual filtering: email (iexact), event (iexact), from_date (gte), to_date (lte)
+          * Full @extend_schema with OpenApiParameter docs
+[ ] Create audit/urls.py
+      - GET logs → AuditLogListView
+[ ] Update audit/apps.py (AppConfig name = "audit")
+[ ] Create audit migration (makemigrations audit)
+
+--------------------------------------
+PHASE 5 — DOCKER & RUNTIME
+--------------------------------------
+[ ] Create Dockerfile
+      - python:3.12-slim base
+      - Install uv
+      - uv sync --frozen --no-dev
+      - Gunicorn entrypoint (4 workers, timeout 60)
+[ ] Create docker-compose.yml
+      - postgres service (postgres:16-alpine) with healthcheck
+      - redis service (redis:7-alpine) with healthcheck
+      - web service: waits for postgres+redis healthy, runs migrate then gunicorn
+      - celery_worker service: waits for postgres+redis healthy, --time-limit=300
+      - All services use .env file
+[ ] Verify docker compose up --build works end-to-end from clean state
+
+--------------------------------------
+PHASE 6 — TESTS
+--------------------------------------
+[ ] Create conftest.py (root) — sets DJANGO_SETTINGS_MODULE
+[ ] Create pytest.ini
+[ ] Create accounts/tests/__init__.py
+[ ] Create accounts/tests/test_otp.py
+      - TestOTPRequest
+          * test_happy_path → 202
+          * test_email_rate_limit → 429 with retry_after
+          * test_ip_rate_limit → 429
+          * test_invalid_email → 400
+      - TestOTPVerify
+          * test_wrong_otp → 400 InvalidOTP
+          * test_lockout_blocks_verify → 423 with retry_after
+          * test_lockout_triggered_after_max_failures → 423
+          * test_success_returns_jwt → 200 with access + refresh
+          * test_expired_otp → 400 (OTP not in Redis)
+          * test_redis_unavailable_fails_closed → 503
+
+--------------------------------------
+PHASE 7 — REMAINING FILES
+--------------------------------------
+[ ] Update README.md — setup steps, env var table, endpoint table, architecture notes
+[ ] Verify .env.example exists with all required vars (no real secrets)
+[ ] Delete or repurpose main.py (uv entrypoint stub, not needed)
+[ ] Run: uv run python manage.py check (should pass with no errors)
+[ ] Run: uv run python manage.py makemigrations
+[ ] Run: uv run python manage.py migrate
+
+--------------------------------------
+CHECKLIST ITEMS EXPLICITLY REQUIRED BY ASSESSMENT
+--------------------------------------
+[ ] POST /api/v1/auth/otp/request — 202 on success
+[ ] POST /api/v1/auth/otp/verify — JWT on success, 423 on lockout, 400 on wrong OTP
+[ ] GET /api/v1/audit/logs — JWT auth, paginated, filterable, newest-first
+[ ] OTP stored in Redis with 5-min TTL
+[ ] OTP is one-time-use (deleted after successful verify)
+[ ] OTP hashed before storing (SHA-256)
+[ ] Constant-time comparison on verify
+[ ] Rate limit: 3 OTP requests per email per 10 min (Redis atomic sliding window)
+[ ] Rate limit: 10 OTP requests per IP per hour (Redis atomic sliding window)
+[ ] Lockout: 5 failed attempts per email per 15 min → 423 with unlock ETA seconds
+[ ] Celery task: send_otp_email (async, non-blocking)
+[ ] Celery task: write_audit_log (async, non-blocking)
+[ ] Audit events: OTP_REQUESTED, OTP_VERIFIED, OTP_FAILED, OTP_LOCKED
+[ ] Swagger UI at /api/docs/ with accurate schemas, examples, correct status codes
+[ ] docker compose up --build starts everything from clean state
+[ ] Celery worker logs prove tasks executed
+[ ] Retry-After header on all 429 and 423 responses
+[ ] Request ID + Correlation ID in all responses (X-Request-ID, X-Correlation-ID headers)
+[ ] Structured JSON logs (not plain text)
+[ ] /health/ and /ready/ endpoints
