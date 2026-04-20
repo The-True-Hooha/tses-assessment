@@ -13,6 +13,7 @@ dependencies = [
     "psycopg2-binary>=2.9.11",
     "python-dotenv>=1.2.2",
     "redis>=7.4.0",
+    "uuid6>=2025.0.1",
 ]
 
 [dependency-groups]
