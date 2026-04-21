@@ -18,7 +18,6 @@ def error_response(message: str, status: int, error: Optional[dict] = None) -> R
     body = {
         "status_code": status,
         "message": message,
-        "data": None,
         "error": error or {},
     }
     return Response(body, status=status)

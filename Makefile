@@ -5,6 +5,9 @@ MANAGE=uv run python manage.py
 install:
 	uv sync
 
+pip-install:
+	pip install -r requirements.txt
+
 export:
 	uv export --format requirements-txt > requirements.txt
 
@@ -34,12 +37,11 @@ collectstatic:
 worker:
 	uv run celery -A $(APP) worker -l info
 
+worker-window:
+	uv run celery -A $(APP) worker -l info --pool=solo
+
 beat:
 	uv run celery -A $(APP) beat -l info
-
-# run tests
-test:
-	uv run pytest
 
 lint:
 	uv run black .
@@ -49,11 +51,20 @@ lint:
 build:
 	docker compose up --build
 
+build-d:
+	docker compose up --build -d
+
 up:
 	docker compose up
 
+up-d:
+	docker compose up -d
+
 down:
 	docker compose down
+
+down-v:
+	docker compose down -v
 
 logs:
 	docker compose logs -f
@@ -62,6 +73,7 @@ logs:
 help:
 	@echo "Available commands:"
 	@echo "  make install        - Install dependencies with uv"
+	@echo "  make pip-install    - Install dependencies with pip"
 	@echo "  make export         - Export requirements.txt"
 	@echo "  make run            - Run Django dev server"
 	@echo "  make migrate        - Apply migrations"

@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[oc]
+*.egg-info
+
+# Virtual environment
+.venv/
+
+# Git
+.git/
+.gitignore
+
+# Environment files
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Django
+*.sqlite3
+staticfiles/
+media/
+
+# Docs
+*.pdf
+*.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

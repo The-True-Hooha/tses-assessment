@@ -21,13 +21,12 @@ def custom_exception_handler(exc, context):
 
         logger.warning(
             "api_exception",
-            extra={"exc_type": type(exc).__name__, "status_code": response.status_code, "message": message},
+            extra={"exc_type": type(exc).__name__, "status_code": response.status_code, "detail": message},
         )
 
         response.data = {
             "status_code": response.status_code,
             "message": message,
-            "data": None,
             "error": {},
         }
         return response
@@ -37,7 +36,6 @@ def custom_exception_handler(exc, context):
         {
             "status_code": 500,
             "message": "An unexpected error occurred.",
-            "data": None,
             "error": {},
         },
         status=status.HTTP_500_INTERNAL_SERVER_ERROR,

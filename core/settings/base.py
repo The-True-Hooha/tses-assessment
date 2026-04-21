@@ -8,9 +8,10 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY:str = os.environ.get("SECRET_KEY", "django-insecure-change-me")
+SECRET_KEY: str = os.environ.get("SECRET_KEY", "django-insecure-change-me")
 DEBUG = os.environ.get("DEBUG", "False") == "True"
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = os.environ.get(
+    "ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -88,6 +89,8 @@ CELERY_TIMEZONE = "UTC"
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_TASK_ACKS_LATE = True
+CELERY_RESULT_EXPIRES = int(os.environ.get(
+    "CELERY_RESULT_EXPIRES", "3600"))  # 1 hour
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -119,7 +122,6 @@ SPECTACULAR_SETTINGS = {
     "TAGS": [
         {"name": "auth", "description": "OTP request and verification endpoints"},
         {"name": "audit", "description": "Audit log endpoints"},
-        {"name": "health", "description": "Health and readiness checks"},
     ],
 }
 
@@ -166,11 +168,17 @@ LOGGING = {
 }
 
 OTP_TTL_SECONDS = int(os.environ.get("OTP_TTL_SECONDS", "300"))  # 5 min
-OTP_MAX_REQUESTS_PER_EMAIL = int(os.environ.get("OTP_MAX_REQUESTS_PER_EMAIL", "3"))
-OTP_EMAIL_WINDOW_SECONDS = int(os.environ.get("OTP_EMAIL_WINDOW_SECONDS", "600"))  # 10 min
+OTP_MAX_REQUESTS_PER_EMAIL = int(
+    os.environ.get("OTP_MAX_REQUESTS_PER_EMAIL", "3"))
+OTP_EMAIL_WINDOW_SECONDS = int(os.environ.get(
+    "OTP_EMAIL_WINDOW_SECONDS", "600"))  # 10 min
 OTP_MAX_REQUESTS_PER_IP = int(os.environ.get("OTP_MAX_REQUESTS_PER_IP", "10"))
-OTP_IP_WINDOW_SECONDS = int(os.environ.get("OTP_IP_WINDOW_SECONDS", "3600"))  # 1 hour
+OTP_IP_WINDOW_SECONDS = int(os.environ.get(
+    "OTP_IP_WINDOW_SECONDS", "3600"))  # 1 hour
 OTP_MAX_FAILED_ATTEMPTS = int(os.environ.get("OTP_MAX_FAILED_ATTEMPTS", "5"))
-OTP_LOCKOUT_WINDOW_SECONDS = int(os.environ.get("OTP_LOCKOUT_WINDOW_SECONDS", "900"))  # 15 min
-GLOBAL_RATE_LIMIT_PER_IP = int(os.environ.get("GLOBAL_RATE_LIMIT_PER_IP", "100"))
-GLOBAL_RATE_LIMIT_WINDOW_SECONDS = int(os.environ.get("GLOBAL_RATE_LIMIT_WINDOW_SECONDS", "60"))
+OTP_LOCKOUT_WINDOW_SECONDS = int(os.environ.get(
+    "OTP_LOCKOUT_WINDOW_SECONDS", "900"))  # 15 min
+GLOBAL_RATE_LIMIT_PER_IP = int(
+    os.environ.get("GLOBAL_RATE_LIMIT_PER_IP", "100"))
+GLOBAL_RATE_LIMIT_WINDOW_SECONDS = int(
+    os.environ.get("GLOBAL_RATE_LIMIT_WINDOW_SECONDS", "60"))
