@@ -1,4 +1,4 @@
-# TSES OTP Authentication API
+# TSES Assessment API
 
 Email-based OTP authentication service with Redis-backed rate limiting, Celery async tasks, JWT tokens, and full OpenAPI documentation.
 
@@ -8,7 +8,7 @@ Email-based OTP authentication service with Redis-backed rate limiting, Celery a
 
 ```bash
 cp .env.example .env
-# Before running with Docker, set POSTGRES_HOST=postgres in .env (matches the container name)
+# Before running with Docker, set POSTGRES_HOST=postgres and REDIS_URL=redis://redis:6379/0 in .env (matches the container name)
 docker compose up --build
 ```
 
@@ -18,32 +18,7 @@ Open Swagger UI: http://localhost:8000/api/v1/docs/
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `SECRET_KEY` | — | Django secret key (required) |
-| `DEBUG` | `False` | Enable debug mode |
-| `ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma-separated allowed hosts |
-| `DJANGO_SETTINGS_MODULE` | `core.settings.dev` | Settings module to load |
-| `POSTGRES_DB` | `tses_db` | PostgreSQL database name |
-| `POSTGRES_USER` | `tses_user` | PostgreSQL user |
-| `POSTGRES_PASSWORD` | — | PostgreSQL password (required) |
-| `POSTGRES_HOST` | `postgres` | PostgreSQL host |
-| `POSTGRES_PORT` | `5432` | PostgreSQL port |
-| `REDIS_URL` | `redis://redis:6379/0` | Redis connection URL |
-| `JWT_ACCESS_LIFETIME_MINUTES` | `60` | JWT access token lifetime |
-| `JWT_REFRESH_LIFETIME_DAYS` | `7` | JWT refresh token lifetime |
-| `OTP_TTL_SECONDS` | `300` | OTP expires after N seconds (5 min) |
-| `OTP_MAX_REQUESTS_PER_EMAIL` | `3` | Max OTP requests per email per window |
-| `OTP_EMAIL_WINDOW_SECONDS` | `600` | Email rate limit window (10 min) |
-| `OTP_MAX_REQUESTS_PER_IP` | `10` | Max OTP requests per IP per window |
-| `OTP_IP_WINDOW_SECONDS` | `3600` | IP rate limit window (1 hour) |
-| `OTP_MAX_FAILED_ATTEMPTS` | `5` | Failed verify attempts before lockout |
-| `OTP_LOCKOUT_WINDOW_SECONDS` | `900` | Lockout duration (15 min) |
-| `GLOBAL_RATE_LIMIT_PER_IP` | `100` | Global max requests per IP per window |
-| `GLOBAL_RATE_LIMIT_WINDOW_SECONDS` | `60` | Global rate limit window (1 min) |
-| `LOG_LEVEL` | `INFO` | Logging level |
-
----
+The `.env.example` contains all the environmental variables required to run the application in desired environment
 
 ## API Endpoints
 
